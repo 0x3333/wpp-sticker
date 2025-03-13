@@ -1,7 +1,6 @@
 const { Client, MessageMedia, LocalAuth } = require('whatsapp-web.js')
 const qrcode = require('qrcode-terminal')
 const commander = require('commander')
-const axios = require('axios')
 const urlRegex = require('url-regex')
 
 const STICKER_COMMAND = "/sticker"
@@ -49,18 +48,16 @@ const generateSticker = async (msg, sender) => {
         let url = msg.body.split(" ").reduce((acc, elem) => acc ? acc : (urlRegex().test(elem) ? elem : false), false)
         if (url) {
             log_debug("URL:", url)
-            let { data, headers } = await axios.get(url, { responseType: 'arraybuffer' })
-            data = Buffer.from(data).toString('base64');
-            let mediaType;
-            if (headers['content-type'].includes("image")) {
-                mediaType = MediaType.Image
-            } else if (headers['content-type'].includes("video")) {
-                mediaType = MediaType.Video
+            let {data, mimetype } = await MessageMedia.fromUrl(url)
+            if (mimetype.includes("image")) {
+                mimetype = MediaType.Image
+            } else if (mimetype.includes("video")) {
+                mimetype = MediaType.Video
             } else {
                 msg.reply("❌ Erro, URL inválida!")
                 return
             }
-            await sendMediaSticker(sender, mediaType, data)
+            await sendMediaSticker(sender, mimetype, data)
         } else {
             msg.reply("❌ Erro, URL inválida!")
         }
@@ -81,7 +78,7 @@ client.on('ready', () => {
 })
 
 client.on('message_create', async msg => {
-    if (msg.body.split(" ").includes(STICKER_COMMAND)) {
+    if (msg.body.split(" ")[0] === (STICKER_COMMAND)) {
         log_debug("User:", client.info.wid.user, "To:", msg.to, "From:", msg.from)
         const sender = msg.from.startsWith(client.info.wid.user) ? msg.to : msg.from
         try {
